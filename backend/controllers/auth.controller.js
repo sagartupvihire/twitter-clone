@@ -61,8 +61,26 @@ export const signup = async (req, res) => {
 
 export const login = async (req, res) => {
   try {
-    // Code for logging in the user goes here
-    res.status(200).json({ message: "User logged in successfully!" });
+    const { username, password } = req.body;
+    const user = await User.findOne({ username: username});
+    const isPasswordCorrect = await bcrypt.compare(password, user?.password || '');
+    
+    if (!user || !isPasswordCorrect) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+    generateTokenAndSetCookie(user._id, res);
+
+    res.status(200).json({
+        _id: user._id,
+        fullName: user.fullname,
+        username: user.username,
+        email: user.email,
+        followers: user.followers,
+        following: user.following,
+        profilePic: user.profilePic,
+        coverImg: user.coverImg,
+  
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -70,9 +88,20 @@ export const login = async (req, res) => {
 
 export const logout = (req, res) => {
   try {
-    // Code for logging out the user goes here
-    res.status(200).json({ message: "User logged out successfully!" });
+        res.cookie('jwt',"",{maxAge:0})
+        res.status(200).json({ message: "User logged out successfully!" });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message + ' Internal server Error' });
   }
 };
+
+
+export const getMe = async (req, res) => {
+	try {
+    const user = await User.findById(req.user._id);
+	res.status(200).json({ user: user});
+  } catch (error) {
+	console.log("Internal server error - " + error.message);
+    res.status(500).json({ error: error.message });
+  }
+}
