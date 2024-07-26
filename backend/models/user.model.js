@@ -15,7 +15,13 @@ const userSchema = new mongoose.Schema({
         type: 'String',
         default: '',
         match: /(https?:\/\/)?([a-zA-Z0-9.-]+\.[a-zA-Z]{2,4})(\/.*)?/
-    }
+    },
+    likedPosts: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Post'
+        }
+    ]
 },{timestamps :true});
 
 const User = mongoose.model('User',userSchema);

@@ -1,5 +1,8 @@
 import User from "../models/user.model.js";
 import Notification from "../models/notification.model.js";
+import bcrypt from "bcrypt"
+import {v2 as cloudinary} from "cloudinary"
+
 export const getUserProfile = async (req, res) =>{
         const {username} = req.params;
         try {
@@ -88,3 +91,62 @@ export const getSuggestUsers = async (req, res) => {
 		res.status(500).json({ error: error.message });
 	}
 }; 
+
+export const updateUser = async (req, res) => {
+    const {fullname, email, currentPassword,newPassword,bio, links} = req.body;
+    let {profilePic , coverImg} = req.body;
+
+    const userId = req.user._id;
+    try {
+        let user = await User.findById(userId);
+        if(!user) return res.status(404).json({message: "User not found"});
+
+        if((!newPassword && currentPassword) || (!currentPassword && newPassword)){
+            return res.status(404).json({error: "please provide current password and new password"});
+        }
+
+        if(currentPassword && newPassword){
+            const isMatch = await bcrypt.compare(currentPassword, user.password);
+            if(!isMatch) return res.status(404).json({error: "current password is incorrect"});
+            if(newPassword.length < 6){
+                return res.status(404).json({error: "new password must be at least 6 characters long"});
+            }
+            const salt = await bcrypt.genSalt(10);
+            user.password = await bcrypt.hash(newPassword, salt);
+
+            if(coverImg){
+
+                if(user.coverImg){
+
+                    await cloudinary.uploader.destroy(user.coverImg.split('/').pop().split('.')[0]);
+                }
+                const uploadedResponse = await cloudinary.uploader.upload(coverPic);
+                profilePic = uploadedResponse.secure_url;
+            }
+
+            if(profilePic){
+                // upload profilePi
+                if(user.profilePic){
+
+                    await cloudinary.uploader.destroy(user.coverImg.split('/').pop().split('.')[0]);
+                }
+                const uploadedResponse = await cloudinary.uploader.upload(profilePic);
+                profilePic = uploadedResponse.secure_url;
+            }
+        }
+
+        user.fullname = fullname || user.fullname;
+        user.email = email || user.email;
+        user.bio = bio || user.bio;
+        user.links = links || user.links;
+        user.coverImg = coverImg || user.coverImg;
+        user.profilePic = profilePic || user.profilePic;
+        await user.save();
+        user.password = null;
+
+        return res.status(200).json(user);
+
+    }catch (err) {
+
+    }
+};
